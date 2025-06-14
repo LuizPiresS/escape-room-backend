@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameController } from './game.controller';
-import { GameService } from './game.service';
-
 describe('GameController', () => {
   let controller: GameController;
   let gameService: { getRoom: jest.Mock };
@@ -13,7 +11,7 @@ describe('GameController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [GameController],
-      providers: [{ provide: GameService, useValue: gameService }],
+      providers: [{ provide: 'GameService', useValue: gameService }],
     }).compile();
 
     controller = module.get<GameController>(GameController);

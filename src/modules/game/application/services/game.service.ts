@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { IGameService } from '../../domain/interfaces/game.service.interface';
 
 @Injectable()
-export class GameService {
+export class GameService implements IGameService {
   private rooms = [
     {
       id: 1,

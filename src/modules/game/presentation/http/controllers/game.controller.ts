@@ -1,9 +1,12 @@
-import { Controller, Get, Param, Post, Body } from '@nestjs/common';
-import { GameService } from './game.service';
+import { Controller, Get, Param, Post, Body, Inject } from '@nestjs/common';
+import { IGameService } from '../../../domain/interfaces/game.service.interface';
 
 @Controller('game')
 export class GameController {
-  constructor(private readonly gameService: GameService) {}
+  constructor(
+    @Inject('GameService')
+    private readonly gameService: IGameService,
+  ) {}
 
   @Get('room/:id')
   getRoom(@Param('id') id: string) {
