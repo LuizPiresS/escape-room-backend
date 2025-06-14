@@ -1,0 +1,28 @@
+generator client {
+  provider      = "prisma-client-js"
+  //output        = "../generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Room {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String
+  completed   Boolean    @default(false)
+  challenge   Challenge?
+}
+
+model Challenge {
+  id       Int    @id @default(autoincrement())
+  type     String
+  question String
+  answer   String
+  room     Room   @relation(fields: [roomId], references: [id])
+  roomId   Int    @unique
+}
