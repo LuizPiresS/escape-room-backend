@@ -1,47 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { IGameService } from '../../domain/interfaces/game.service.interface';
+import { IGameRepository } from '../../domain/interfaces/game.repository.interface';
 
 @Injectable()
 export class GameService implements IGameService {
-  private rooms = [
-    {
-      id: 1,
-      name: 'Sala do Código',
-      description: 'Decifre o código para avançar',
-      challenge: {
-        type: 'code',
-        question: 'Qual é o resultado de 2 + 2 * 2?',
-        answer: '6',
-      },
-      completed: false,
-    },
-    {
-      id: 2,
-      name: 'Sala do Enigma',
-      description: 'Resolva o enigma para continuar',
-      challenge: {
-        type: 'riddle',
-        question: 'Quanto mais você tira, maior eu fico. O que sou?',
-        answer: 'buraco',
-      },
-      completed: false,
-    },
-    {
-      id: 3,
-      name: 'Sala Final',
-      description: 'Último desafio para escapar',
-      challenge: {
-        type: 'pattern',
-        question: 'Qual é o próximo número na sequência: 2, 4, 8, 16, ___?',
-        answer: '32',
-      },
-      completed: false,
-    },
-  ];
+  constructor(
+    @Inject('GameRepository')
+    private readonly gameRepository: IGameRepository,
+  ) {}
 
-  getRoom(roomId: number) {
-    const room = this.rooms.find((r) => r.id === roomId);
+  async getRoom(roomId: number) {
+    const room = await this.gameRepository.findRoomById(roomId);
     if (!room) throw new Error('Sala não encontrada');
+    if (!room.challenge) {
+      throw new Error('Desafio da sala não encontrado');
+    }
     return {
       id: room.id,
       name: room.name,
@@ -54,18 +27,21 @@ export class GameService implements IGameService {
     };
   }
 
-  checkAnswer(roomId: number, answer: string) {
-    const room = this.rooms.find((r) => r.id === roomId);
+  async checkAnswer(roomId: number, answer: string) {
+    const room = await this.gameRepository.findRoomById(roomId);
     if (!room) throw new Error('Sala não encontrada');
 
+    if (!room.challenge) {
+      throw new Error('Desafio da sala não encontrado');
+    }
     const isCorrect =
       room.challenge.answer.toLowerCase() === answer.toLowerCase();
     if (isCorrect) {
-      room.completed = true;
+      await this.gameRepository.updateRoomCompleted(roomId, true);
       return {
         success: true,
         message: 'Resposta correta!',
-        currentProgress: this.calculateProgress(),
+        currentProgress: await this.calculateProgress(),
       };
     }
     return {
@@ -74,9 +50,9 @@ export class GameService implements IGameService {
     };
   }
 
-  private calculateProgress() {
-    const completedCount = this.rooms.filter((r) => r.completed).length;
-    const total = this.rooms.length;
+  private async calculateProgress() {
+    const total = await this.gameRepository.countRooms();
+    const completedCount = await this.gameRepository.countCompletedRooms();
     return {
       percentage: Math.round((completedCount / total) * 100),
       completedRooms: completedCount,
@@ -84,18 +60,16 @@ export class GameService implements IGameService {
     };
   }
 
-  getGameProgress() {
+  async getGameProgress() {
     return this.calculateProgress();
   }
 
-  resetGame() {
-    this.rooms.forEach((room) => {
-      room.completed = false;
-    });
+  async resetGame() {
+    await this.gameRepository.resetAllRooms();
     return {
       success: true,
       message: 'Jogo resetado com sucesso',
-      progress: this.calculateProgress(),
+      progress: await this.calculateProgress(),
     };
   }
 }

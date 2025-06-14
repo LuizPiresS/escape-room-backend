@@ -11,26 +11,29 @@ export class GameController {
   ) {}
 
   @Get('room/:id')
-  getRoom(@Param() params: RoomIdParamDto) {
+  async getRoom(@Param() params: RoomIdParamDto) {
     return this.gameService.getRoom(params.id);
   }
 
   @Post('room/:id/check-answer')
-  checkAnswer(@Param() params: RoomIdParamDto, @Body() body: CheckAnswerDto) {
+  async checkAnswer(
+    @Param() params: RoomIdParamDto,
+    @Body() body: CheckAnswerDto,
+  ) {
     return this.gameService.checkAnswer(params.id, body.answer);
   }
 
   @Get('progress')
-  getProgress() {
+  async getProgress() {
     return {
       success: true,
-      data: this.gameService.getGameProgress(),
+      data: await this.gameService.getGameProgress(),
     };
   }
 
   @Post('reset')
-  resetGame() {
-    const result = this.gameService.resetGame();
+  async resetGame() {
+    const result = await this.gameService.resetGame();
     return {
       success: result.success,
       data: result.progress,

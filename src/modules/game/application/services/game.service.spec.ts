@@ -1,104 +1,149 @@
 import { GameService } from './game.service';
+import { IGameRepository } from '../../domain/interfaces/game.repository.interface';
 
-describe('GameService - resetGame', () => {
+const mockRoom = {
+  id: 1,
+  name: 'Room 1',
+  description: 'First room',
+  challenge: {
+    type: 'riddle',
+    question: 'What has keys but can’t open locks?',
+    answer: 'piano',
+  },
+  completed: false,
+};
+
+const mockCompletedRoom = { ...mockRoom, completed: true };
+
+describe('GameService', () => {
   let service: GameService;
+  let gameRepository: jest.Mocked<IGameRepository>;
 
   beforeEach(() => {
-    service = new GameService();
+    gameRepository = {
+      findRoomById: jest.fn(),
+      updateRoomCompleted: jest.fn(),
+      countRooms: jest.fn(),
+      countCompletedRooms: jest.fn(),
+      resetAllRooms: jest.fn(),
+    } as jest.Mocked<IGameRepository>;
+
+    service = new GameService(gameRepository);
   });
 
-  it('should reset all rooms to not completed', () => {
-    // Complete some rooms first
-    service.checkAnswer(1, '6');
-    service.checkAnswer(2, 'buraco');
-    // Ensure rooms are completed
-    expect(service['rooms'][0].completed).toBe(true);
-    expect(service['rooms'][1].completed).toBe(true);
+  describe('getRoom', () => {
+    it('should return room data if found', async () => {
+      gameRepository.findRoomById.mockResolvedValue(mockRoom);
 
-    // Reset game
-    const result = service.resetGame();
+      const result = await service.getRoom(1);
 
-    // All rooms should be not completed
-    service['rooms'].forEach((room) => {
-      expect(room.completed).toBe(false);
+      expect(result).toEqual({
+        id: mockRoom.id,
+        name: mockRoom.name,
+        description: mockRoom.description,
+        challenge: {
+          type: mockRoom.challenge.type,
+          question: mockRoom.challenge.question,
+        },
+        completed: mockRoom.completed,
+      });
     });
 
-    // Check return value
-    expect(result).toEqual({
-      success: true,
-      message: 'Jogo resetado com sucesso',
-      progress: {
-        percentage: 0,
-        completedRooms: 0,
-        totalRooms: 3,
-      },
+    it('should throw if room not found', async () => {
+      gameRepository.findRoomById.mockResolvedValue(null);
+
+      await expect(service.getRoom(1)).rejects.toThrow('Sala não encontrada');
+    });
+
+    it('should throw if challenge not found', async () => {
+      gameRepository.findRoomById.mockResolvedValue({
+        ...mockRoom,
+        challenge: null,
+      });
+
+      await expect(service.getRoom(1)).rejects.toThrow(
+        'Desafio da sala não encontrado',
+      );
     });
   });
 
-  it('should not throw if called when all rooms are already not completed', () => {
-    // All rooms are not completed by default
-    const result = service.resetGame();
-    expect(result.success).toBe(true);
-    service['rooms'].forEach((room) => {
-      expect(room.completed).toBe(false);
-    });
-  });
+  describe('checkAnswer', () => {
+    it('should return success if answer is correct (case-insensitive)', async () => {
+      gameRepository.findRoomById.mockResolvedValue(mockRoom);
+      gameRepository.updateRoomCompleted.mockResolvedValue(mockCompletedRoom);
+      gameRepository.countRooms.mockResolvedValue(3);
+      gameRepository.countCompletedRooms.mockResolvedValue(1);
 
-  it('should mark a room as completed when the correct answer is given', () => {
-    const result = service.checkAnswer(1, '6');
-    expect(result).toEqual({
-      success: true,
-      message: 'Resposta correta!',
-      currentProgress: {
+      const result = await service.checkAnswer(1, 'Piano');
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Resposta correta!');
+      expect(result.currentProgress).toEqual({
         percentage: 33,
         completedRooms: 1,
         totalRooms: 3,
-      },
+      });
     });
-    expect(service['rooms'][0].completed).toBe(true);
-  });
 
-  it('should not mark a room as completed when the answer is incorrect', () => {
-    const result = service.checkAnswer(2, 'errado');
-    expect(result).toEqual({
-      success: false,
-      message: 'Resposta incorreta. Tente novamente!',
+    it('should return failure if answer is incorrect', async () => {
+      gameRepository.findRoomById.mockResolvedValue(mockRoom);
+
+      const result = await service.checkAnswer(1, 'wrong');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Resposta incorreta. Tente novamente!');
     });
-    expect(service['rooms'][1].completed).toBe(false);
-  });
 
-  it('should throw an error if room does not exist in checkAnswer', () => {
-    expect(() => service.checkAnswer(999, 'qualquer')).toThrow(
-      'Sala não encontrada',
-    );
-  });
+    it('should throw if room not found', async () => {
+      gameRepository.findRoomById.mockResolvedValue(null);
 
-  it('should return room data without answer in getRoom', () => {
-    const room = service.getRoom(1);
-    expect(room).toEqual({
-      id: 1,
-      name: 'Sala do Código',
-      description: 'Decifre o código para avançar',
-      challenge: {
-        type: 'code',
-        question: 'Qual é o resultado de 2 + 2 * 2?',
-      },
-      completed: false,
+      await expect(service.checkAnswer(1, 'piano')).rejects.toThrow(
+        'Sala não encontrada',
+      );
+    });
+
+    it('should throw if challenge not found', async () => {
+      gameRepository.findRoomById.mockResolvedValue({
+        ...mockRoom,
+        challenge: null,
+      });
+
+      await expect(service.checkAnswer(1, 'piano')).rejects.toThrow(
+        'Desafio da sala não encontrado',
+      );
     });
   });
 
-  it('should throw an error if room does not exist in getRoom', () => {
-    expect(() => service.getRoom(999)).toThrow('Sala não encontrada');
+  describe('getGameProgress', () => {
+    it('should return progress', async () => {
+      gameRepository.countRooms.mockResolvedValue(5);
+      gameRepository.countCompletedRooms.mockResolvedValue(2);
+
+      const result = await service.getGameProgress();
+
+      expect(result).toEqual({
+        percentage: 40,
+        completedRooms: 2,
+        totalRooms: 5,
+      });
+    });
   });
 
-  it('should calculate progress correctly after completing rooms', () => {
-    service.checkAnswer(1, '6');
-    service.checkAnswer(2, 'buraco');
-    const progress = service.getGameProgress();
-    expect(progress).toEqual({
-      percentage: 67,
-      completedRooms: 2,
-      totalRooms: 3,
+  describe('resetGame', () => {
+    it('should reset all rooms and return progress', async () => {
+      gameRepository.resetAllRooms.mockResolvedValue(undefined);
+      gameRepository.countRooms.mockResolvedValue(4);
+      gameRepository.countCompletedRooms.mockResolvedValue(0);
+
+      const result = await service.resetGame();
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Jogo resetado com sucesso');
+      expect(result.progress).toEqual({
+        percentage: 0,
+        completedRooms: 0,
+        totalRooms: 4,
+      });
     });
   });
 });

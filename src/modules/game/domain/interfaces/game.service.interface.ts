@@ -1,5 +1,5 @@
 export interface IGameService {
-  getRoom(roomId: number): {
+  getRoom(roomId: number): Promise<{
     id: number;
     name: string;
     description: string;
@@ -8,12 +8,12 @@ export interface IGameService {
       question: string;
     };
     completed: boolean;
-  };
+  }>;
 
   checkAnswer(
     roomId: number,
     answer: string,
-  ): {
+  ): Promise<{
     success: boolean;
     message: string;
     currentProgress?: {
@@ -21,15 +21,15 @@ export interface IGameService {
       completedRooms: number;
       totalRooms: number;
     };
-  };
+  }>;
 
-  getGameProgress(): {
+  getGameProgress(): Promise<{
     percentage: number;
     completedRooms: number;
     totalRooms: number;
-  };
+  }>;
 
-  resetGame(): {
+  resetGame(): Promise<{
     success: boolean;
     message: string;
     progress: {
@@ -37,5 +37,5 @@ export interface IGameService {
       completedRooms: number;
       totalRooms: number;
     };
-  };
+  }>;
 }

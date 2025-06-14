@@ -7,7 +7,8 @@ RUN apt-get update && \
     openssl \
     curl \
     git \
-    procps && \
+    procps \
+    netcat-openbsd && \
     rm -rf /var/lib/apt/lists/*
 
 # 2. Install NestJS CLI and Prisma globally
@@ -23,7 +24,6 @@ COPY --chown=node:node prisma ./prisma/
 # 5. Install project dependencies and generate Prisma client
 RUN npm install && \
     npx prisma generate
-
 # 6. Copy the rest of the application
 COPY --chown=node:node . .
 
@@ -32,6 +32,8 @@ RUN chown -R node:node /home/node/app
 
 # 8. Set non-root user
 USER node
+
+
 
 # 9. Expose port
 EXPOSE 3000
