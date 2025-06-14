@@ -11,7 +11,7 @@ export class GameController {
   ) {}
 
   @Get('room/:id')
-  getRoom(@Param('params') params: RoomIdParamDto) {
+  getRoom(@Param() params: RoomIdParamDto) {
     return this.gameService.getRoom(params.id);
   }
 
