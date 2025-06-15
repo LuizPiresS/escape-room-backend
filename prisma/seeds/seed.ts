@@ -3,9 +3,14 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Remove dados antigos (opcional)
   await prisma.challenge.deleteMany();
   await prisma.room.deleteMany();
+
+  //  -- AMBIENTE DE DE DESENVOLVIMENTO Reseta o contador de IDs (sequências) no PostgreSQL -- AMBIENTE DE DE DESENVOLVIMENTO
+  await prisma.$executeRawUnsafe(`ALTER SEQUENCE "Room_id_seq" RESTART WITH 1`);
+  await prisma.$executeRawUnsafe(
+    `ALTER SEQUENCE "Challenge_id_seq" RESTART WITH 1`,
+  );
 
   // Dados das salas
   const rooms = [
