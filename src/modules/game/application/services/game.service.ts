@@ -1,4 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { IGameService } from '../../domain/interfaces/game.service.interface';
 import { IGameRepository } from '../../domain/interfaces/game.repository.interface';
 
@@ -10,10 +15,22 @@ export class GameService implements IGameService {
   ) {}
 
   async getRoom(roomId: number) {
+    // Verifica se todas as salas anteriores estão completas
+    if (roomId > 1) {
+      for (let i = 1; i < roomId; i++) {
+        const prevRoom = await this.gameRepository.findRoomById(i);
+        if (!prevRoom || !prevRoom.completed) {
+          throw new ForbiddenException(
+            'Você precisa completar as salas anteriores antes de acessar esta sala.',
+          );
+        }
+      }
+    }
+
     const room = await this.gameRepository.findRoomById(roomId);
-    if (!room) throw new Error('Sala não encontrada');
+    if (!room) throw new NotFoundException('Sala não encontrada');
     if (!room.challenge) {
-      throw new Error('Desafio da sala não encontrado');
+      throw new NotFoundException('Desafio da sala não encontrado');
     }
     return {
       id: room.id,
@@ -29,10 +46,9 @@ export class GameService implements IGameService {
 
   async checkAnswer(roomId: number, answer: string) {
     const room = await this.gameRepository.findRoomById(roomId);
-    if (!room) throw new Error('Sala não encontrada');
-
+    if (!room) throw new NotFoundException('Sala não encontrada');
     if (!room.challenge) {
-      throw new Error('Desafio da sala não encontrado');
+      throw new NotFoundException('Desafio da sala não encontrado');
     }
     const isCorrect =
       room.challenge.answer.toLowerCase() === answer.toLowerCase();
